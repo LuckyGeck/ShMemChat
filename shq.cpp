@@ -9,6 +9,7 @@
 
 
 namespace {
+/// This struct denotes the header of queue in shmem
 struct TShmemHead {
     size_t TotalMsgsLength;
 
@@ -21,6 +22,8 @@ struct TShmemHead {
         TotalMsgsLength += strlen(msg) + 1;
     }
 
+    /// Calls fn for each message in queue and cleans up shmem
+    /// @return number of messages, that were passed to fn
     size_t IterateMsgs(NShQ::TShQ::TProcessingFn& fn) const {
         const char* beginning = (const char*)this + sizeof(TotalMsgsLength);
         size_t curOffset = 0;
@@ -42,10 +45,8 @@ class TShQ::TImpl {
 public:
     TImpl(const char* path, size_t shmemSize, bool ownQueue)
         : OwnQueue(ownQueue)
-        , Key(ftok(path, 'R'))
-        , ShMemId(shmget(Key, shmemSize, 0777 | IPC_CREAT))
-        , ShMemSize(shmemSize)
-        , ShMem((TShmemHead*)shmat(ShMemId, nullptr, 0))
+        , ShMemId(shmget(ftok(path, 'R'), shmemSize, 0777 | IPC_CREAT))
+        , ShMemHeader((TShmemHead*)shmat(ShMemId, nullptr, 0))
         , WriteSem(path, ownQueue)
     {
         if (OwnQueue) {
@@ -54,22 +55,22 @@ public:
     }
 
     ~TImpl() {
-        shmdt((void*)ShMem);
+        shmdt((void*)ShMemHeader); // unmount shmem
         if (OwnQueue) {
-            shmctl(ShMemId, IPC_RMID, NULL);
+            shmctl(ShMemId, IPC_RMID, NULL); // we own this shmem - so destroy it
         }
     }
 
     void AppendMsg(const char* msg) {
         Lock();
-        ShMem->AddMsg(msg);
+        ShMemHeader->AddMsg(msg);
         Unlock();
     }
 
     size_t ProcessAndClean(TShQ::TProcessingFn fn) {
         Lock();
-        size_t messagesCount = ShMem->IterateMsgs(fn);
-        ShMem->Clear();
+        size_t messagesCount = ShMemHeader->IterateMsgs(fn);
+        ShMemHeader->Clear();
         Unlock();
         return messagesCount;
     }
@@ -85,10 +86,9 @@ private:
 
 private:
     bool OwnQueue;
-    key_t Key;
     int ShMemId;
-    size_t ShMemSize;
-    TShmemHead* ShMem;
+    TShmemHead* ShMemHeader;
+
     NSem::TSem WriteSem;
 };
 

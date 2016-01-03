@@ -7,8 +7,8 @@
 const size_t SHMEM_SIZE = 1 << 16;
 
 int main() {
-    NShQ::TShQ queue("/dev/urandom", SHMEM_SIZE, false);
-    NSem::TSem msgWaitingSem("/dev/random", false);
+    NShQ::TShQ queue("/dev/urandom", SHMEM_SIZE, /* own = */ false);
+    NSem::TSem msgWaitingSem("/dev/random", /* own = */ false);
     while (true) {
         std::cout << "$>:";
         std::string msg;

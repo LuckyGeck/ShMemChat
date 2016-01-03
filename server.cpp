@@ -10,8 +10,8 @@ void PrintMessages(const char* msg) {
 }
 
 int main() {
-    NShQ::TShQ queue("/dev/urandom", SHMEM_SIZE, true);
-    NSem::TSem msgWaitingSem("/dev/random", true);
+    NShQ::TShQ queue("/dev/urandom", SHMEM_SIZE, /* own = */ true);
+    NSem::TSem msgWaitingSem("/dev/random", /* own = */ true);
     while (true) {
         msgWaitingSem.Dec();
         size_t msgRead = queue.ProcessAndClean(PrintMessages);

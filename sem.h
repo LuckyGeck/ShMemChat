@@ -2,8 +2,10 @@
 
 
 namespace NSem {
+/// Wrapper for working with semaphore
 class TSem {
 public:
+    /// @param own - if it's true, object will own semaphore and destroy it in dtor
     TSem(const char* path, bool own);
     ~TSem();
 
